@@ -865,6 +865,151 @@ document.addEventListener('DOMContentLoaded', function() {
         logger.info(f"Arquivo ZIP criado: {zip_path}")
         return zip_path
     
+    def remove_lovable_references(self):
+        """Remove referências a 'Lovable' de todos os arquivos HTML.
+        
+        Esta função automatiza as alterações manuais identificadas no repositório
+        gilded-awakening-focus-clean, removendo badges e referências a 'Lovable'
+        de todos os arquivos HTML.
+        """
+        logger.info("Removendo referências a 'Lovable' de todos os arquivos HTML...")
+        
+        # Lista de arquivos HTML para processar
+        html_files = []
+        
+        # Adicionar arquivo index.html
+        index_path = os.path.join(self.output_dir, 'index.html')
+        if os.path.exists(index_path):
+            html_files.append(index_path)
+        
+        # Adicionar arquivos HTML da pasta pages
+        pages_dir = os.path.join(self.output_dir, 'pages')
+        if os.path.exists(pages_dir):
+            for file in os.listdir(pages_dir):
+                if file.endswith('.html'):
+                    html_files.append(os.path.join(pages_dir, file))
+        
+        # Processar cada arquivo HTML
+        for file_path in html_files:
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                
+                # Remover referências a 'Lovable' no conteúdo
+                # 1. Substituir 'Lovable' por '' em classes, IDs e textos
+                content = re.sub(r'Lovable\s+', '', content)
+                content = re.sub(r'\s+Lovable', '', content)
+                
+                # 2. Substituir 'Lovable' por '' em footer e header
+                content = content.replace('class="footer-logo">Lovable', 'class="footer-logo">Focus')
+                content = content.replace('class="header-logo">Lovable', 'class="header-logo">Focus')
+                
+                # 3. Substituir copyright
+                content = re.sub(r'© 2025 Lovable\.', '© 2025 Focus.', content)
+                
+                # 4. Remover badges ou elementos com classe que contém 'lovable'
+                soup = BeautifulSoup(content, 'html.parser')
+                
+                # Remover elementos com classe que contém 'lovable'
+                for element in soup.find_all(class_=lambda c: c and 'lovable' in c.lower()):
+                    element.decompose()
+                
+                # Remover elementos com id que contém 'lovable'
+                for element in soup.find_all(id=lambda i: i and 'lovable' in i.lower()):
+                    element.decompose()
+                
+                # Salvar o conteúdo modificado
+                with open(file_path, 'w', encoding='utf-8') as f:
+                    f.write(str(soup))
+                
+                logger.info(f"Referências a 'Lovable' removidas de: {file_path}")
+            
+            except Exception as e:
+                logger.error(f"Erro ao processar {file_path}: {str(e)}")
+    
+    def simplify_readme(self):
+        """Simplifica o README removendo seções desnecessárias.
+        
+        Esta função automatiza as alterações manuais identificadas no repositório
+        gilded-awakening-focus-clean, simplificando o README.md.
+        """
+        readme_path = os.path.join(self.output_dir, 'README.md')
+        
+        # Verificar se o README existe
+        if not os.path.exists(readme_path):
+            # Criar um README simplificado
+            simple_readme = f"""# Focus Website
+
+Este é o site extraído de Focus, com navegação funcional e recursos completos.
+
+## Conteúdo
+
+- Página inicial
+- Páginas de conteúdo
+- Recursos (CSS, JavaScript, imagens)
+- Navegação funcional
+
+## Como usar
+
+Abra o arquivo `index.html` em um navegador para visualizar o site.
+"""
+            
+            with open(readme_path, 'w', encoding='utf-8') as f:
+                f.write(simple_readme)
+            
+            logger.info(f"README simplificado criado: {readme_path}")
+        else:
+            # Simplificar o README existente
+            try:
+                with open(readme_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                
+                # Substituir referências a 'Lovable' por 'Focus'
+                content = content.replace('Lovable', 'Focus')
+                
+                # Simplificar o conteúdo
+                lines = content.split('\n')
+                simplified_lines = []
+                
+                # Manter apenas as seções importantes
+                in_important_section = True
+                for line in lines:
+                    if line.startswith('## '):
+                        # Verificar se é uma seção importante
+                        section_name = line[3:].lower()
+                        in_important_section = section_name in ['conteúdo', 'content', 'como usar', 'how to use']
+                    
+                    if in_important_section:
+                        simplified_lines.append(line)
+                
+                # Se ficou muito curto, adicionar conteúdo padrão
+                if len(simplified_lines) < 10:
+                    simplified_lines = [
+                        "# Focus Website",
+                        "",
+                        "Este é o site extraído de Focus, com navegação funcional e recursos completos.",
+                        "",
+                        "## Conteúdo",
+                        "",
+                        "- Página inicial",
+                        "- Páginas de conteúdo",
+                        "- Recursos (CSS, JavaScript, imagens)",
+                        "- Navegação funcional",
+                        "",
+                        "## Como usar",
+                        "",
+                        "Abra o arquivo `index.html` em um navegador para visualizar o site."
+                    ]
+                
+                # Salvar o README simplificado
+                with open(readme_path, 'w', encoding='utf-8') as f:
+                    f.write('\n'.join(simplified_lines))
+                
+                logger.info(f"README simplificado: {readme_path}")
+            
+            except Exception as e:
+                logger.error(f"Erro ao simplificar README: {str(e)}")
+    
     def run(self):
         """Executa o processo de scraping completo."""
         try:
@@ -886,6 +1031,12 @@ document.addEventListener('DOMContentLoaded', function() {
             self.create_sitemap()
             self.create_robots_txt()
             self.create_subpages_index()
+            
+            # Aplicar limpeza automática (remoção de referências a 'Lovable')
+            self.remove_lovable_references()
+            
+            # Simplificar README
+            self.simplify_readme()
             
             # Criar arquivo ZIP
             zip_path = self.create_zip_archive()
@@ -910,6 +1061,8 @@ def main():
     parser.add_argument('--max-pages', '-m', type=int, default=20, help='Número máximo de páginas para extrair')
     parser.add_argument('--include-subdomains', '-s', action='store_true', help='Incluir subdomínios no scraping')
     parser.add_argument('--create-zip', '-z', action='store_true', help='Criar arquivo ZIP com o site extraído')
+    parser.add_argument('--clean-lovable', '-c', action='store_true', help='Remover referências a "Lovable" de todos os arquivos HTML')
+    parser.add_argument('--simplify-readme', '-r', action='store_true', help='Simplificar o README removendo seções desnecessárias')
     
     args = parser.parse_args()
     
